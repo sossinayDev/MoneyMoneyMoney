@@ -1,3 +1,9 @@
+unwanted = [
+    "GUTSCHRIFT AUFTRAGGEBER: "
+]
+
+
+
 const iban_location = "Document/BkToCstmrStmt/Stmt/Acct/Id/IBAN";
 const account_owner_location = "Document/BkToCstmrStmt/Stmt/Acct/Ownr/Nm";
 
@@ -16,7 +22,7 @@ function add_entry_to_ms_money(bookingDate, remittanceInfo, amount, reciever, ca
     entry += `M${remittanceInfo}\n`;
     entry += `T${amount}\n`;
     entry += `P${rec}\n`;
-    entry += `N$${msec}\n`;
+    /* entry += `N$${msec}\n`; */
     /* entry += `L${category}\n`; */
     entry += "^\n";
     entry.replaceAll("ö", "oe");
@@ -57,13 +63,13 @@ async function convert(text) {
         if (cdtDbtInd === "DBIT") {
             amount = -amount;
         }
-        
+
         let bookingDate = entry.getElementsByTagName("BookgDt")[0].getElementsByTagName("Dt")[0].textContent;
         let valutionDate = entry.getElementsByTagName("ValDt")[0].getElementsByTagName("Dt")[0].textContent;
         let remittanceInfoElem = entry.getElementsByTagName("RmtInf");
         let remittanceInfo = remittanceInfoElem.length > 0 ? remittanceInfoElem[0].textContent.trim() : "Keine Angaben";
-        
-        if (remittanceInfo.includes("AHV Altersrente")){
+
+        if (remittanceInfo.includes("AHV Altersrente")) {
             reciever = ownerName;
             remittanceInfo = "AHV Altersrente";
         }
@@ -91,19 +97,19 @@ async function convert(text) {
                             } else {
                                 remittanceInfo = "TWINT-Zahlung";
                             }
-                            reciever = parts[1].trim().split("MITTEILUNGEN:")[0].replace("MITTEILUNGEN:","").trim() + " (Twint)";
+                            reciever = parts[1].trim().split("MITTEILUNGEN:")[0].replace("MITTEILUNGEN:", "").trim() + " (Twint)";
                         }
                     }
                 }
-                else if (reciever.includes("KARTEN NR. XXXX")){
+                else if (reciever.includes("KARTEN NR. XXXX")) {
                     let backpart = reciever.split("KARTEN NR. XXXX")[1].trim().substring(4).trim();
                     reciever = backpart;
                 }
-                else if (reciever.startsWith("LASTSCHRIFT")){
+                else if (reciever.startsWith("LASTSCHRIFT")) {
                     remittanceInfo = "Lastschrift";
                     reciever = reciever.substring(34).trim();
                 }
-                else if (reciever.startsWith("AUFTRAG")){
+                else if (reciever.startsWith("AUFTRAG")) {
                     remittanceInfo = "Auftrag";
                     reciever = reciever.split("ZAHLUNGSEMPFÄNGER:")[1].trim().split("MITTEILUNGEN:")[0].trim();
                 }
@@ -112,17 +118,21 @@ async function convert(text) {
                 failed_count += 1;
                 reciever = "Unbekannt";
             }
+
+            unwanted.forEach(text => {
+                reciever = reciever.replaceAll(text, "")
+            });
+
+            console.log(reciever);
+
+            ms_money_result += add_entry_to_ms_money(bookingDate, remittanceInfo, amount, reciever, "Sonstiges");
+
+            edit_info(`Verarbeite Einträge... (${i + 1}/${entries.length}) - Fehlgeschlagen: ${failed_count}`);
+            await delay(Math.random() * 0.02)
         }
 
-        console.log(reciever);
 
-        ms_money_result += add_entry_to_ms_money(bookingDate, remittanceInfo, amount, reciever, "Sonstiges");
-
-        edit_info(`Verarbeite Einträge... (${i + 1}/${entries.length}) - Fehlgeschlagen: ${failed_count}`);
-        await delay(Math.random() * 0.02)
+        add_info("Verarbeitung abgeschlossen.");
+        download_result(ms_money_result)
     }
-
-
-    add_info("Verarbeitung abgeschlossen.");
-    download_result(ms_money_result)
 }
