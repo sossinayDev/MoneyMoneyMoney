@@ -131,8 +131,7 @@ async function convert(text) {
             await delay(Math.random() * 0.02)
         }
 
-
-        add_info("Verarbeitung abgeschlossen.");
-        download_result(ms_money_result)
     }
+    add_info("Verarbeitung abgeschlossen.");
+    download_result(ms_money_result)
 }
